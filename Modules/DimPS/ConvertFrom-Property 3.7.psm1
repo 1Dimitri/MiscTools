@@ -85,7 +85,7 @@
    1.0   2010 June 15 http://poshcode.org/get/1915
          - Initial release
 #>
-# function ConvertFrom-PropertyString {
+function ConvertFrom-PropertyString {
 [CmdletBinding(DefaultParameterSetName="Data")]
 param(
    # The text to be parsed
@@ -294,4 +294,4 @@ end {
    ## Put this back in case there's more input
    $RePropertySeparator = $SetPropertySeparator
 }
-#}
+} # closing symbol for function to be syntax error free
