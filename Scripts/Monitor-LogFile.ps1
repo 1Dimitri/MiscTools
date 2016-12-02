@@ -1,4 +1,5 @@
 
+$folder = 'C:\Test\logs' # Enter the root path you want to monitor.
 $filter = '*.log' # You can enter a wildcard filter here.
 $recurse = $true # sub directories?
 
