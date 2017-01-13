@@ -18,7 +18,6 @@ Function Get-ComputerInfo
         the console, in other words the data does not export very well, unless the Foreach-Object  
         technique is used above.  This is something that may come in a future release or a simplied  
         version. 
-
 .PARAMETER ComputerName 
         A single Computer or an array of computer names.  The default is localhost ($env:COMPUTERNAME). 
 .EXAMPLE 
@@ -109,8 +108,6 @@ Function Get-ComputerInfo
  
         SCCM 2012/CCM_ClientSDK: 
         http://msdn.microsoft.com/en-us/library/jj902723.aspx 
-
-        
 .NOTES 
         Author:    Brian C. Wilhite 
         Email:     bwilhite1@carolina.rr.com 
@@ -127,9 +124,7 @@ Function Get-ComputerInfo
         0.85 - Now reports LogicalProcessors & Domain (2K3/2K8) 
                Better PendingReboot support for Windows 2008+ 
                Minor Write-Progress Changes 
-      
-       Downloaded from:
-	https://gallery.technet.microsoft.com/scriptcenter/Get-ComputerInfo-Query-23dd6042              
+                    
 #> 
  
 [CmdletBinding()] 
@@ -192,8 +187,11 @@ Begin
       "VolumeName" 
       "VolumeDirty" 
       "Size" 
+      "SizeUnits"
+      "FreeSpaceUnits"
       "FreeSpace" 
       "PercentFree" 
+
       )#End $VolInfoSelProp 
        
   }#End Begin Script Block 
@@ -374,9 +372,14 @@ Process
                   DeviceID    = $Volume.DeviceID 
                   VolumeName  = $Volume.VolumeName 
                   VolumeDirty = $Volume.VolumeDirty 
-                  Size        = $("{0:F} GB" -f $($Volume.Size / 1GB)) 
-                  FreeSpace   = $("{0:F} GB" -f $($Volume.FreeSpace / 1GB)) 
-                  PercentFree = $("{0:P}" -f $($Volume.FreeSpace / $Volume.Size)) 
+                  #Size        = $("{0:F} GB" -f $($Volume.Size / 1GB)) 
+                  Size= $Volume.Size / 1GB
+                  SizeUnits =  'GB'
+                  #FreeSpace   = $("{0:F} GB" -f $($Volume.FreeSpace / 1GB)) 
+                  FreeSpace = $Volume.FreeSpace / 1GB
+                  FreeSpaceUnits = 'GB'
+                  #PercentFree = $("{0:P}" -f $($Volume.FreeSpace / $Volume.Size)) 
+                  PercentFree = ($Volume.FreeSpace / $Volume.Size)
                   } | Select-Object $VolInfoSelProp 
  
               }#End Foreach ($Volume in $WMI_LD) 
