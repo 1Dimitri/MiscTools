@@ -178,7 +178,7 @@ Begin
       "DNSServerOrder" 
       "DNSSuffixSearch" 
       "PhysicalAdapter" 
-      "Speed" 
+      "SpeedInMBit" 
       )#End $NetInfoSelProp 
      
     #Defining $VolInfo Select Properties For Correct Display Order 
@@ -186,10 +186,8 @@ Begin
       "DeviceID" 
       "VolumeName" 
       "VolumeDirty" 
-      "Size" 
-      "SizeUnits"
-      "FreeSpaceUnits"
-      "FreeSpace" 
+      "SizeInGB" 
+      "FreeSpaceInGB" 
       "PercentFree" 
 
       )#End $VolInfoSelProp 
@@ -359,7 +357,7 @@ Process
                   DNSServerOrder  = $NAC.DNSServerSearchOrder 
                   DNSSuffixSearch = $NAC.DNSDomainSuffixSearchOrder 
                   PhysicalAdapter = $PhysAdap 
-                  Speed           = $Speed 
+                  SpeedInMbit     = $Speed 
                   } | Select-Object $NetInfoSelProp 
  
               }#End Foreach ($NAC in $WMI_NAC) 
@@ -373,11 +371,9 @@ Process
                   VolumeName  = $Volume.VolumeName 
                   VolumeDirty = $Volume.VolumeDirty 
                   #Size        = $("{0:F} GB" -f $($Volume.Size / 1GB)) 
-                  Size= $Volume.Size / 1GB
-                  SizeUnits =  'GB'
+                  SizeInGB= $Volume.Size / 1GB
                   #FreeSpace   = $("{0:F} GB" -f $($Volume.FreeSpace / 1GB)) 
-                  FreeSpace = $Volume.FreeSpace / 1GB
-                  FreeSpaceUnits = 'GB'
+                  FreeSpaceInGB = $Volume.FreeSpace / 1GB
                   #PercentFree = $("{0:P}" -f $($Volume.FreeSpace / $Volume.Size)) 
                   PercentFree = ($Volume.FreeSpace / $Volume.Size)
                   } | Select-Object $VolInfoSelProp 
