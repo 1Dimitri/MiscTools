@@ -1,7 +1,7 @@
 ﻿$NestedModules = Get-ChildItem -Filter *.psm1
 $psd1= Join-Path $PSScriptRoot 'DimPS.psd1'
 $me = "1Dimitri"
-$mver = "0.1"
+$mver = "0.2"
 $originalGUID ='f8ca7ae7-3ccf-4b90-8f04-7e8c0c5e2e4b'
 $description =@"
 Useful bits of Powershell collected over time from various sources

@@ -1,5 +1,4 @@
-    #######################
-    <#
+<#
     .SYNOPSIS
         Runs a T-SQL script.
      
@@ -84,167 +83,167 @@
 	Downloaded from
 	 http://poshcode.org/6340
 	 
-    #>
-    function Invoke-Sqlcmd2
-    {
-        [CmdletBinding(
-            DefaultParameterSetName='Query'
-        )]
-        param(
-            [Parameter( Position=0, Mandatory=$true)]
-            [string]$ServerInstance,
-       
-            [Parameter( Position=1, Mandatory=$false)]
-            [string]$Database,
-       
-            [Parameter( Position=2,
-                        Mandatory=$true,
-                        ParameterSetName="Query")]
-            [string]$Query,
-       
-            [Parameter( Position=2,
-                        Mandatory=$true,
-                        ParameterSetName="File")]
-            [ValidateScript({test-path $_})]
-            [string]$InputFile,
-     
-            [Parameter(Position=3, Mandatory=$false)]
-            [string]$Username,
-       
-            [Parameter(Position=4, Mandatory=$false)]
-            [string]$Password,
-       
-            [Parameter(Position=5, Mandatory=$false)]
-            [Int32]$QueryTimeout=600,
-       
-            [Parameter(Position=6, Mandatory=$false)]
-            [Int32]$ConnectionTimeout=15,
-       
-            [Parameter(Position=7, Mandatory=$false)]
-            [ValidateSet("DataSet", "DataTable", "DataRow","SingleValue")]
-            [string]$As="DataRow",
-       
-            [Parameter(Position=8, Mandatory=$false)]
-            [System.Collections.IDictionary]$SqlParameters,
-     
-            [switch]$DBNullToNull,
-     
-            [Parameter(Mandatory=$false)] [switch]$TrustedConnection,
-        )
-     
-        if ($InputFile)
-        {
-            $filePath = $(Resolve-Path $InputFile).path
-            $Query =  [System.IO.File]::ReadAllText("$filePath")
-        }
-     
-        $conn = New-Object System.Data.SqlClient.SQLConnection
-        # allow the use of trusted connections
-        if($TrustedConnection) { $trust = 'True'} else { $trust = 'False'}
-         
-        if ($TrustedConnection)
-        { $ConnectionString = "Server={0};Database={1};Trusted_Connection={2};Connect Timeout={3}" -f $ServerInstance,$Database,$trust,$ConnectionTimeout }
-        elseif ($Username)
-        { $ConnectionString = "Server={0};Database={1};User ID={2};Password={3};Trusted_Connection=False;Connect Timeout={4}" -f $ServerInstance,$Database,$Username,$Password,$ConnectionTimeout }
-        else
-        { $ConnectionString = "Server={0};Database={1};Integrated Security=True;Connect Timeout={2}" -f $ServerInstance,$Database,$ConnectionTimeout }
-     
-        $conn.ConnectionString = $ConnectionString
-         
-        #Following EventHandler is used for PRINT and RAISERROR T-SQL statements. Executed when -Verbose parameter specified by caller
-        if ($PSBoundParameters.Verbose)
-        {
-            $conn.FireInfoMessageEventOnUserErrors=$true
-            $handler = [System.Data.SqlClient.SqlInfoMessageEventHandler] { Write-Verbose "$($_)" }
-            $conn.add_InfoMessage($handler)
-        }
-         
-        $conn.Open()
-     
-        $cmd = New-Object system.Data.SqlClient.SqlCommand($Query,$conn)
-        $cmd.CommandTimeout=$QueryTimeout
-     
-        if ($SqlParameters -ne $null)
-        {
-            $SqlParameters.GetEnumerator() |
-                ForEach-Object {
-                    If ($_.Value -ne $null)
-                    { $cmd.Parameters.AddWithValue($_.Key, $_.Value) }
-                    Else
-                    { $cmd.Parameters.AddWithValue($_.Key, [DBNull]::Value) }
-                } > $null
-        }
-       
-        $ds = New-Object system.Data.DataSet
-        $da = New-Object system.Data.SqlClient.SqlDataAdapter($cmd)
-       
-        [void]$da.fill($ds)
-        $conn.Close()
-     
-        #This code scrubs DBNulls
-        $cSharp = @'
-           using System;
-           using System.Data;
-           using System.Management.Automation;
-     
-           public class DBNullScrubber
-           {
-               public static PSObject DataRowToPSObject(DataRow row)
-               {
-                   PSObject psObject = new PSObject();
-     
-                   if (row != null && (row.RowState & DataRowState.Detached) != DataRowState.Detached)
-                   {
-                       foreach (DataColumn column in row.Table.Columns)
-                       {
-                           Object value = null;
-                           if (!row.IsNull(column))
-                           {
-                               value = row[column];
-                           }
-     
-                           psObject.Properties.Add(new PSNoteProperty(column.ColumnName, value));
-                       }
-                   }
-     
-                   return psObject;
-               }
-           }
-    '@
-     
-        switch ($As)
-        {
-            'DataSet'
-            {
-                $ds
-            }
-            'DataTable'
-            {
-                $ds.Tables
-            }
-            'DataRow'
-            {
-                if(-not $DBNullToNull)
-                {
-                    $ds.Tables[0]
-                }
-                else
-                {
-                    #Scrub DBNulls if specified.
-                    #Provides convenient results you can use comparisons with
-                    #Introduces overhead (e.g. ~2000 rows w/ ~80 columns went from .15 Seconds to .65 Seconds - depending on your data could be much more!)
-                    Add-Type -TypeDefinition $cSharp -ReferencedAssemblies 'System.Data','System.Xml'
-     
-                    foreach ($row in $ds.Tables[0].Rows)
-                    {
-                        [DBNullScrubber]::DataRowToPSObject($row)
-                    }
-                }
-            }
-            'SingleValue'
-            {
-                $ds.Tables[0] | Select-Object -Expand $ds.Tables[0].Columns[0].ColumnName
-            }
-        }
-     
-    } #Invoke-Sqlcmd2
+#>
+function Invoke-Sqlcmd2
+{
+	[CmdletBinding(
+		DefaultParameterSetName='Query'
+	)]
+	param(
+		[Parameter( Position=0, Mandatory=$true)]
+		[string]$ServerInstance,
+   
+		[Parameter( Position=1, Mandatory=$false)]
+		[string]$Database,
+   
+		[Parameter( Position=2,
+					Mandatory=$true,
+					ParameterSetName="Query")]
+		[string]$Query,
+   
+		[Parameter( Position=2,
+					Mandatory=$true,
+					ParameterSetName="File")]
+		[ValidateScript({test-path $_})]
+		[string]$InputFile,
+ 
+		[Parameter(Position=3, Mandatory=$false)]
+		[string]$Username,
+   
+		[Parameter(Position=4, Mandatory=$false)]
+		[string]$Password,
+   
+		[Parameter(Position=5, Mandatory=$false)]
+		[Int32]$QueryTimeout=600,
+   
+		[Parameter(Position=6, Mandatory=$false)]
+		[Int32]$ConnectionTimeout=15,
+   
+		[Parameter(Position=7, Mandatory=$false)]
+		[ValidateSet("DataSet", "DataTable", "DataRow","SingleValue")]
+		[string]$As="DataRow",
+   
+		[Parameter(Position=8, Mandatory=$false)]
+		[System.Collections.IDictionary]$SqlParameters,
+ 
+		[switch]$DBNullToNull,
+ 
+		[Parameter(Mandatory=$false)] [switch]$TrustedConnection
+	)
+ 
+	if ($InputFile)
+	{
+		$filePath = $(Resolve-Path $InputFile).path
+		$Query =  [System.IO.File]::ReadAllText("$filePath")
+	}
+ 
+	$conn = New-Object System.Data.SqlClient.SQLConnection
+	# allow the use of trusted connections
+	if($TrustedConnection) { $trust = 'True'} else { $trust = 'False'}
+	 
+	if ($TrustedConnection)
+	{ $ConnectionString = "Server={0};Database={1};Trusted_Connection={2};Connect Timeout={3}" -f $ServerInstance,$Database,$trust,$ConnectionTimeout }
+	elseif ($Username)
+	{ $ConnectionString = "Server={0};Database={1};User ID={2};Password={3};Trusted_Connection=False;Connect Timeout={4}" -f $ServerInstance,$Database,$Username,$Password,$ConnectionTimeout }
+	else
+	{ $ConnectionString = "Server={0};Database={1};Integrated Security=True;Connect Timeout={2}" -f $ServerInstance,$Database,$ConnectionTimeout }
+ 
+	$conn.ConnectionString = $ConnectionString
+	 
+	#Following EventHandler is used for PRINT and RAISERROR T-SQL statements. Executed when -Verbose parameter specified by caller
+	if ($PSBoundParameters.Verbose)
+	{
+		$conn.FireInfoMessageEventOnUserErrors=$true
+		$handler = [System.Data.SqlClient.SqlInfoMessageEventHandler] { Write-Verbose "$($_)" }
+		$conn.add_InfoMessage($handler)
+	}
+	 
+	$conn.Open()
+ 
+	$cmd = New-Object system.Data.SqlClient.SqlCommand($Query,$conn)
+	$cmd.CommandTimeout=$QueryTimeout
+ 
+	if ($SqlParameters -ne $null)
+	{
+		$SqlParameters.GetEnumerator() |
+			ForEach-Object {
+				If ($_.Value -ne $null)
+				{ $cmd.Parameters.AddWithValue($_.Key, $_.Value) }
+				Else
+				{ $cmd.Parameters.AddWithValue($_.Key, [DBNull]::Value) }
+			} > $null
+	}
+   
+	$ds = New-Object system.Data.DataSet
+	$da = New-Object system.Data.SqlClient.SqlDataAdapter($cmd)
+   
+	[void]$da.fill($ds)
+	$conn.Close()
+ 
+	#This code scrubs DBNulls
+	$cSharp = @'
+	   using System;
+	   using System.Data;
+	   using System.Management.Automation;
+ 
+	   public class DBNullScrubber
+	   {
+		   public static PSObject DataRowToPSObject(DataRow row)
+		   {
+			   PSObject psObject = new PSObject();
+ 
+			   if (row != null && (row.RowState & DataRowState.Detached) != DataRowState.Detached)
+			   {
+				   foreach (DataColumn column in row.Table.Columns)
+				   {
+					   Object value = null;
+					   if (!row.IsNull(column))
+					   {
+						   value = row[column];
+					   }
+ 
+					   psObject.Properties.Add(new PSNoteProperty(column.ColumnName, value));
+				   }
+			   }
+ 
+			   return psObject;
+		   }
+	   }
+'@
+ 
+	switch ($As)
+	{
+		'DataSet'
+		{
+			$ds
+		}
+		'DataTable'
+		{
+			$ds.Tables
+		}
+		'DataRow'
+		{
+			if(-not $DBNullToNull)
+			{
+				$ds.Tables[0]
+			}
+			else
+			{
+				#Scrub DBNulls if specified.
+				#Provides convenient results you can use comparisons with
+				#Introduces overhead (e.g. ~2000 rows w/ ~80 columns went from .15 Seconds to .65 Seconds - depending on your data could be much more!)
+				Add-Type -TypeDefinition $cSharp -ReferencedAssemblies 'System.Data','System.Xml'
+ 
+				foreach ($row in $ds.Tables[0].Rows)
+				{
+					[DBNullScrubber]::DataRowToPSObject($row)
+				}
+			}
+		}
+		'SingleValue'
+		{
+			$ds.Tables[0] | Select-Object -Expand $ds.Tables[0].Columns[0].ColumnName
+		}
+	}
+ 
+} #Invoke-Sqlcmd2

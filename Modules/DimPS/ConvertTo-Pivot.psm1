@@ -25,7 +25,7 @@
     #.Notes
     #  Author: Joel Bennett
     #  downloaded from  http://poshcode.org/3434
-      function Pivot-Object {
+      function ConvertTo-Pivot {
     [CmdletBinding()]
     param(
        # The name of the property to merge on. Items with the same value in this column will be combined.
