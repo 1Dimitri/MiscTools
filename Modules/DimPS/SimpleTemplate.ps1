@@ -1,4 +1,14 @@
-﻿Function Get-QuickTemplateVarList {
+﻿<#
+.Synopsis
+   Get a list of variables
+.DESCRIPTION
+   Get a list of the variables this template contains in the form !!variable!! or !!variable:help text!!
+.EXAMPLE
+   Get-Content 'C:\temp\file.txt' | Get-QuickTemplateVariableList
+.INPUTS
+  Pipeline is text of the template
+#>
+Function Get-QuickTemplateVariableList {
 
 Begin  {
   $varlist = @{}
@@ -23,10 +33,20 @@ $varlist
 
 }
 
+<#
+.Synopsis
+   Check if variables exist
+.DESCRIPTION
+   Check if the variables obtained by Get-QuickTemplateVariableList do exist
+.EXAMPLE
+   Get-Content 'C:\temp\file.txt' | Get-QuickTemplateVariableList |  Test-QuickTemplateVariableList
+.INPUTS
+  Pipeline is text of the template
+#>
 Function Test-QuickTemplateVariableList {
 
 param(
-
+[Parameter(Mandatory=$true,ValueFromPipeLine=$true)]
 [hashtable]$Varlist)
 
 Process {
@@ -37,6 +57,17 @@ $Varlist.Keys | ForEach-Object {
 }
 
 }
+
+<#
+.Synopsis
+   Expands the template
+.DESCRIPTION
+   Replace the variable placeholders by their contents
+.EXAMPLE
+   Get-Content 'C:\temp\file.txt' | Expand-QuickTemplate
+.INPUTS
+  Pipeline is text of the template
+#>
 
 Function Expand-QuickTemplate {
 
