@@ -22,3 +22,18 @@ $varlist
 }
 
 }
+
+Function Test-TemplateVarList {
+
+param(
+
+[hashtable]$Varlist)
+
+Process {
+$Varlist.Keys | ForEach-Object {  
+     
+     [PSCustomObject] @{Variable = $_; Exists =  (Get-Variable $_ -EA SilentlyContinue) -ne $null }
+    }
+}
+
+}
