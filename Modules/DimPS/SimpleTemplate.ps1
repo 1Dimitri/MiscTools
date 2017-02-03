@@ -1,4 +1,4 @@
-﻿Function Get-TemplateVarList {
+﻿Function Get-QuickTemplateVarList {
 
 Begin  {
   $varlist = @{}
@@ -23,7 +23,7 @@ $varlist
 
 }
 
-Function Test-TemplateVarList {
+Function Test-QuickTemplateVariableList {
 
 param(
 
@@ -32,8 +32,27 @@ param(
 Process {
 $Varlist.Keys | ForEach-Object {  
      
-     [PSCustomObject] @{Variable = $_; Exists =  (Get-Variable $_ -EA SilentlyContinue) -ne $null }
+     [PSCustomObject] @{Variable = $_; Purpose=$varlist[$_]; Exists =  (Get-Variable $_ -EA SilentlyContinue) -ne $null }
     }
+}
+
+}
+
+Function Expand-QuickTemplate {
+
+Begin  {
+
+}
+
+Process {
+ [RegEx]::replace($_,'!!(?<VariableName>[\w\d]+)(:(?<Purpose>.+?))?!!',{param($Match) $v=$Match.Groups['VariableName'].Value; if (Test-Path Variable:$($v)) { Get-Variable $v -ValueOnly } else { Write-Verbose "$v doesn't exist but is used"; "!!$v!!" } } ) 
+
+  
+}
+
+End {
+
+
 }
 
 }
