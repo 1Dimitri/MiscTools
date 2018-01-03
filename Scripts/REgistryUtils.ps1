@@ -4,26 +4,35 @@ using System.Runtime.InteropServices;
 using Microsoft.Win32;
 
 namespace Registry {
-  public class Utils {
-    [DllImport("advapi32.dll", SetLastError = true)]
-    private static extern int RegCloseKey(UIntPtr hKey);
 
-    [DllImport("advapi32.dll", SetLastError = true)]
-    private static extern int RegOpenKeyEx(UIntPtr hKey, string subKey, int ulOptions, int samDesired, out UIntPtr hkResult);
+   public enum  HKEY : uint { HKEY_LOCAL_MACHINE = 0x80000002u, HKEY_USERS = 0x80000003u };
+   
+  public class Utils  {
+  	
 
-    [DllImport("advapi32.dll", SetLastError=true, CharSet = CharSet.Unicode)]
-    private static extern uint RegSaveKey(UIntPtr hKey, string lpFile, IntPtr lpSecurityAttributes);
+	[DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern Int32 RegLoadKey(uint hKey, string lpSubKey, string lpFile);
 
-    private static int KEY_READ = 131097;
-    private static UIntPtr HKEY_LOCAL_MACHINE = new UIntPtr(0x80000002u);
+	[DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern Int32 RegUnLoadKey(uint hKey, string lpSubKey);
+	
 
-    public static uint SaveKey(string key, string path) {
-      UIntPtr hKey = UIntPtr.Zero;
-      RegOpenKeyEx(HKEY_LOCAL_MACHINE, key, 0, KEY_READ, out hKey);
-      uint result = RegSaveKey(hKey, path, IntPtr.Zero);
-      RegCloseKey(hKey);
-      return result;
     }
+	
+	# needs [Privileges.TokenPrivileges]::EnablePrivilege('SeRestorePrivilege') 
+	public static int LoadKey(HKEY key,string subkey, string path) {
+	 // UIntPtr hkey =  new UIntPtr(key);
+	  int result = RegLoadKey((uint)key,subkey,path);
+	  return result;
+	}
+	
+	public static int UnloadKey(HKEY key,string subkey) {
+	  int result = RegUnLoadKey((uint)key,subkey);
+	  return result;
+	}
+	
+	
+	
   }
 }
 '@
