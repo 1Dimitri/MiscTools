@@ -167,7 +167,7 @@ function Get-InventoryData {
         [Alias('Cn')]
         [ValidateNotNullOrEmpty()]
         [Parameter(ValueFromPipeline)]
-        [string[]]$ComputerName,
+        [string[]]$ComputerName=$Env:COMPUTERNAME,
         [scriptblock]$CredentialCallback
     )
 
@@ -226,7 +226,7 @@ function Get-InventoryData {
                 if (-not $isLocal) {
                     $WMIParameters['ComputerName'] = $MachineName                    
                         
-                    if ($creds) {
+                    if ($null -ne $creds) {
                         $WMIParameters.Add('Credential',$creds)
                         Write-Verbose "Credentials retrieved = $creds"
                     }
