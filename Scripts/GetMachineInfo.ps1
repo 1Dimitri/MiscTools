@@ -196,7 +196,7 @@ function Get-InventoryData {
             $isPingable = Test-Connection -ComputerName $PingMachineName -Quiet
         
             $ReturnProperties = @{
-                    TimeStamp = $StartTime
+                    TimeStamp = $StartTimeAll
                     ComputerName = $MachineName
                     Pingable = $isPingable
                     LocalHost = $isLocal
@@ -235,12 +235,12 @@ function Get-InventoryData {
                     # Queries
                 $wmiresult = Get-SafeWMIResult @WMIParameters
 
-                Write-Verbose "Finished W"
+                Write-Verbose "Finished WMI Query"
                 if ($wmiresult.isValid) {
                     Write-Verbose "${MachineName}: $WMIclass -> OK"
                     $ReturnProperties.Add($WMIClass,$wmiresult)
                 } else {
-                 -Credential  Write-Verbose "${MachineMame}: $WMIClass -> error"
+                    Write-Verbose "${MachineMame}: $WMIClass -> error"
                     $ReturnProperties["InvalidData"].Add($WMIClass)
                 }
 
