@@ -1,5 +1,16 @@
 #requires -version 4.0
 
+Function Merge-Hashtables([ScriptBlock]$Operator) {
+    $Output = @{}
+    ForEach ($Hashtable in $Input) {
+        If ($Hashtable -is [Hashtable]) {
+            ForEach ($Key in $Hashtable.Keys) {$Output.$Key = If ($Output.ContainsKey($Key)) {@($Output.$Key) + $Hashtable.$Key} Else  {$Hashtable.$Key}}
+        }
+    }
+    If ($Operator) {ForEach ($Key in @($Output.Keys)) {$_ = @($Output.$Key); $Output.$Key = Invoke-Command $Operator}}
+    $Output
+}
+
 Function Get-SafeWMIResult {
     <#
    .SYNOPSIS
@@ -117,7 +128,7 @@ Function Get-SafeWMIResult {
        Write-Verbose "Forcing ErrorAction"
        if ($PSBoundParameters.ContainsKey('ErrorAction')) {
            $errorAction = $PSBoundParameters['ErrorAction']
-           Write-Verbose "erroraction was $ErrorACtion"
+           Write-Verbose "erroraction was $ErrorAction"
            $PSBoundParameters.Remove('ErrorAction')
        }
    } #begin
@@ -129,7 +140,7 @@ Function Get-SafeWMIResult {
         try {
                $result = Get-WmiObject @PSBoundParameters -ErrorAction Stop
                $result | Add-Member -MemberType NoteProperty -Name isValid -Value $true 
-               Write-VErbose "WMI Query successful"
+               Write-Verbose "WMI Query successful"
             
             }
         catch {
@@ -153,38 +164,46 @@ Function Get-SafeWMIResult {
    } #end function Get-SafeWMIResult
    
 function Get-SafeWMIFullClass {
-    [CmdletBinding()]
+    [CmdletBinding(RemotingCapability='OwnedByCommand')] 
     param (
-        [parameter(mandatory=$true, position=0)]
+        [Parameter(Mandatory=$true, Position=0)]
+        [string[]]$Classes,    
+        [switch]$Amended,    
+        [switch]$DirectRead,       
+        [switch]$AsJob,
+        [System.Management.ImpersonationLevel]$Impersonation,
+        [System.Management.AuthenticationLevel]$Authentication,  
+        [string]$Locale,
+        [switch]$EnableAllPrivileges,
+        [string]$Authority,
+        [pscredential][System.Management.Automation.CredentialAttribute()]$Credential,
+        [int]$ThrottleLimit,
+        [Alias('Cn')]
         [ValidateNotNullOrEmpty()]
-        [string[]]$Classes,
-        [parameter(mandatory=$false, position=1, ValueFromRemainingArguments=$true)]
-        [Hashtable]$WMICommonParameters      
-    )
-    
+        [string[]]$ComputerName,
+        [Alias('NS')]
+        [string]$Namespace
+    )    
     begin {
         $ReturnProperties = @{'_InvalidData'=  [System.Collections.ArrayList]@()}
+        $classesToGet = $PSBoundParameters['Classes']
+        $PSBoundParameters.Remove('Classes') | Out-Null
     }
     
     process {     
-        foreach ($WMIClass in $Classes) {
+        foreach ($WMIClass in $classesToGet) {
             Write-Verbose "WMI Class: $wmiclass"
  
             # Queries
-            if ($null -ne $WMICommonParameters) {
-                $wmiresult = Get-SafeWMIResult -Class $WMIClass @WMICommonParameters
-            }
-            else {
-                $wmiresult = Get-SafeWMIResult -Class $WMIClass 
-            }
+            $wmiresult = Get-SafeWMIResult -Class $WMIClass @PSBoundParameters
 
             Write-Verbose "Finished WMI Query for $WMIClass "
             if ($wmiresult.isValid) {
                 Write-Verbose "${MachineName}: $WMIclass -> OK"
-                $ReturnProperties.Add($WMIClass,$wmiresult)
+                $ReturnProperties.Add($WMIClass,$wmiresult) |Out-Null
             } else {
                 Write-Verbose "${MachineMame}: $WMIClass -> error"
-                $ReturnProperties["_InvalidData"].Add($WMIClass)
+                $ReturnProperties["_InvalidData"].Add($WMIClass) | Out-Null
             }
         } # foreach WMIClass
     }
@@ -194,36 +213,6 @@ function Get-SafeWMIFullClass {
     }
 }
 
-function Add-SafeMember {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory=$true)]
-        [Hashtable]
-        $InputObject,
-        [Hashtable]
-        $Member,
-        [String]
-        $Prefix
-    )
-    
-    
-    foreach ($k in $Member.Keys)    {
-        if ('_InvalidData' -ne $k) {
-                if ($PSBoundParameters.ContainsKey('Prefix')) {
-                    $Keyname = "$Prefix_$k"
-                } else {
-                $Keyname = $k
-                 }
-                 $InputObject.Add($keyname,$InputObject[$k])
-     
-        } else {
-            $newdata = [System.Collections.ArrayList]@()
-            foreach ($k in $InputObject[$k]) { if ($null -ne $Prefix) { $newdata.Add("$prefix_$k") } else { $newdata.Add($k)} }  
-            $InputObject.Add('_InvalidData',$InputObject[$k])
-        }
-    }
-    
-}
 Function Get-WmiNamespace ($Path = 'root')
 {
     foreach ($Namespace in (Get-WmiObject -Namespace $Path -Class __Namespace))
@@ -235,19 +224,28 @@ Function Get-WmiNamespace ($Path = 'root')
 } 
 
 Function Test-SafeWMINamespace {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName='query', RemotingCapability='OwnedByCommand')] 
     param(
     [parameter(mandatory=$true, position=0)]
     [ValidateNotNullOrEmpty()]
+    [Alias('NS')]
     [string]$Namespace,
-    [parameter(mandatory=$false, position=1, ValueFromRemainingArguments=$true)]$WMICommonParameters      
+    [switch]$Amended,
+    [switch]$DirectRead,
+    [switch]$AsJob,
+    [System.Management.ImpersonationLevel]$Impersonation,
+    [System.Management.AuthenticationLevel]$Authentication,
+    [string]$Locale,
+    [switch]$EnableAllPrivileges,
+    [string]$Authority,
+    [pscredential][System.Management.Automation.CredentialAttribute()]$Credential,
+    [int]$ThrottleLimit,
+    [Alias('Cn')]
+    [ValidateNotNullOrEmpty()]
+    [string[]]$ComputerName  
     )
 
-    if ($null -ne $WMICommonParameters) {
-        $result = Get-SafeWMIResult -Class __Namespace -Namespace $Namespace @WMICommonParameters
-    } else {        
-        $result = Get-SafeWMIResult -Class __Namespace -Namespace $Namespace
-    }
+    $result = Get-SafeWMIResult -Class __Namespace @PSBoundParameters
     $result.isValid
 }
 function Get-InventoryData {
@@ -316,12 +314,12 @@ function Get-InventoryData {
                        
             }
 
-            # Classes we try to get every time
+            # Classes we try to get every time,
             Write-Verbose "Getting Standard WMI Properties for $MachineName"        
             $WMIClasses = @('Win32_ComputerSystem','Win32_OperatingSystem','Win32_Product','Win32_LogicalDisk','Win32_Volume','Win32_DiskDrive','Win32_NetworkAdapterConfiguration','Win32_QuickFixEngineering')
             $WMIBasicProperties = Get-SafeWMIFullClass -Classes $WMIClasses @WMICommonParameters
-
-            $ReturnProperties += $WMIBasicProperties
+            #$ReturnProperties += $WMIBasicProperties
+            $ReturnProperties = $ReturnProperties,$WMIBasicProperties | Merge-Hashtables
 
             Write-Verbose "Trying to get SQL Server Information"
             $SQLServerNamespace = 'root/Microsoft/SqlServer'
@@ -336,15 +334,19 @@ function Get-InventoryData {
                     $namespaceToQuery = $SQLServerNamespace +'/'+ $dbVersion.Name 
                     $WMISQLClasses = @('ServerSettings','SqlService','SqlServiceAdvancedProperty')
                     $sqlresult = Get-SafeWMIFullClass -Classes $WMISQLClasses @WMICommonParameters -Namespace $namespaceToQuery
-                    $ReturnProperties = Add-SafeMember -InputObject $ReturnProperties -Member $sqlresult
+                    $ReturnProperties = $ReturnProperties, $sqlresult | Merge-Hashtables
                 }
 
-                $instanceNames = [System.Collections.ArrayList]@()
-                $perfClasses = Get-SafeWMIResult -List -Class 'Win32_PerfFormattedData_*_SQLServerDatabases'
-                foreach ($perfInstance in $perfClasses) {
-                    $ReturnProperties.Add($perfInstance.__CLASS,$perfInstance)
-                    $instanceNames.Add($perfInstance.__CLASS -replace 'Win32_PerfFormattedData_(.+)_SQLServerDatabases','$1')
-                }
+                #$instanceNames = [System.Collections.ArrayList]@()
+                $perfClasses = (Get-SafeWMIResult -List -Class 'Win32_PerfFormattedData_*Databases' @WMICommonParameters).Name
+                $perfInstances = Get-SafeWMIFullClass -Classes $perfClasses @WMICommonParameters
+                # foreach ($perfInstance in $perfClasses) {
+                #     #$ReturnProperties.Add($perfInstance.__CLASS,$perfInstance)
+                #     $ReturnProperties = Add-SafeMember -InputObject $ReturnProperties -Member @{$perfInstance.__CLASS = $perfInstance}
+                #     $instanceNames.Add($perfInstance.__CLASS -replace 'Win32_PerfFormattedData_(.+)_SQLServerDatabases','$1')
+                # }
+                $ReturnProperties = $ReturnProperties, $perfInstances | Merge-Hashtables
+                $instanceNames = $perfClasses -replace 'Win32_PerfFormattedData_(.+)_\1Databases','$1'
             }
 
             $ReturnProperties.Add('SQLServerInstanceNames',$instanceNames)
@@ -352,8 +354,5 @@ function Get-InventoryData {
             [PSCustomObject] $ReturnProperties
 
         } # foreach MachineName
-    
-
-    }
-    
+    }    
 }
