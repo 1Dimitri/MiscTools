@@ -187,7 +187,7 @@ function Get-SafeWMIFullClass {
     begin {
         $ReturnProperties = @{'_InvalidData'=  [System.Collections.ArrayList]@()}
         $classesToGet = $PSBoundParameters['Classes']
-        $PSBoundParameters.Remove('Classes') | Out-Null
+        $PSBoundParameters.Remove('Classes') |Out-Null
     }
     
     process {     
