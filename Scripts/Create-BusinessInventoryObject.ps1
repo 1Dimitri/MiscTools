@@ -1,17 +1,3 @@
-# TODO: SQL Installed loop
-# Round GB
-
-
-# function Test-CreateNewDirectory {
-#     param (
-#         [Parameter(Mandatory=true,Position=0)]
-#         [String]$Path
-#     )
-#     if (!(Test-Path $Path)) {
-#         Write-Verbose "Creating Destination Directory $Path"
-#         New-Item -ItemType Directory -Path $Path -Force | Out-Null
-#     } 
-# }
 function New-BusinessObject {
     [CmdletBinding()]
     param (
@@ -83,7 +69,7 @@ function New-BusinessObject {
                 $PhysicalProcessors = $machine.Win32_ComputerSystem.NumberOfProcessors
 
                 # RAM
-                $RAM_GB = $machine.Win32_ComputerSystem.TotalPhysicalMemory / 1GB
+                $RAM_GB = [Math]::Round($machine.Win32_ComputerSystem.TotalPhysicalMemory / 1GB)
 
                 # Domain or Workgroup and role
                 $isPartOfDomain = $machine.Win32_ComputerSystem.PartOfDomain
@@ -105,11 +91,11 @@ function New-BusinessObject {
                 # Operating System
                 $HumanPurposeDescription = $machine.Win32_OperatingSystem.description
                 $OS_Generation_Edition_Desc = $machine.Win32_OperatingSystem.Caption
-                $OS_SP_Desc = $machine.Win32_OperatingSystem.CSDVersion
+                $OS_SP_Desc = $machine.Win32_OperatingSystem.CSDVersion # may be null
                 $OS_Build = $machine.Win32_OperatingSystem.BuildNumber
                 $OSArchitecture = $machine.Win32_OperatingSystem.OSArchitecture
                 $OSFriendlyName = (@($OS_Generation_Edition_Desc,$OS_SP_Desc) -join ' ').trim() + " $OSArchitecture ($OS_Build)"
-
+                $OSFriendlyName = $OSFriendlyName -replace '  ',' '
                 # KB
                 $hotfixes = [System.Collections.ArrayList]@()
                 foreach ($hotfix in $machine.Win32_QuickFixEngineering) {
@@ -140,13 +126,13 @@ function New-BusinessObject {
                 foreach ($Volume in $machine.Win32_LogicalDisk) {
                     $letter = $Volume.Caption
                     $disktype_desc = $Volume.description
-                    $disktype = $Volume.DriveType
-                    $totalspace = $Volume.Size/1GB
-                    $freespace = $Volume.FreeSpace /1GB
+                    $disktype = $Volume.DriveType                    
+                    $totalspace = [Math]::Round($Volume.Size/1GB)
+                    $freespace = [Math]::Round($Volume.FreeSpace /1GB,2)
                     $Volumes.Add([PSCustomObject]@{
                         Letter = $letter
                         "Type" = $disktype
-                        "TypeDesc" = $disktype_desc
+                        "Type_Desc" = $disktype_desc
                         CapacityGB = $totalspace
                         FreeGB = $freespace
                     }) | Out-Null         
@@ -171,7 +157,8 @@ function New-BusinessObject {
                 }
 
                 # SQL
-                $isSQLServerInstalled = $machine.isSQLServerInstalled
+                # work around bugs in version where $machine.isSQLServerInstalled was returned as array of boolean instead of boolean
+                $isSQLServerInstalled = $machine.isSQLServerInstalled | Sort-Object -Unique
                 if ($isSQLServerInstalled) {
                     $instances = [System.Collections.ArrayList]@()
                     # Get the Service Advanced properties
@@ -188,11 +175,14 @@ function New-BusinessObject {
                     $InstanceID = $hashTablebySqlServiceProp['INSTANCEID'].PropertyStrValue
                     # TO DO: Not valid for clustered code
                     $InstanceName = $InstanceID -replace '^MSSQL(\d)+\.',''
+                    $SQLInstanceNameInPerfCounter = $InstanceID -replace '(^MSSQL)\d+\.(.+)','$1$2'
+                        Write-VErbose "***$SQLInstanceNameInPerfCounter***"
                     if ($InstanceName -eq 'MSSQLSERVER') {
                         $InstanceName = $ComputerShortname
                     } else {
                         $InstanceName = $ComputerShortname + '\' + $InstanceName
                     }
+                    $InstanceName = $InstanceName.ToUpper()
 
                     $SQLEdition = $hashTablebySqlServiceProp['SKUNAME'].PropertyStrValue
                     $SQLVersion = $hashTablebySqlServiceProp['VERSION'].PropertyStrValue
@@ -211,7 +201,7 @@ function New-BusinessObject {
                         11 { '2012'; break;  }
                         12 { '2014'; break;  }
                         13 { '2016'; break;  }
-                        14 { '2017'; break}
+                        14 { '2017'; break; }
                         Default { 'Internal Number '+$SQLVersionParts[0]}
                     }
                     $sqlServicePack = ([int] $SQLVersionParts[1]) % 50
@@ -224,11 +214,25 @@ function New-BusinessObject {
                         $SQLVersion_Desc += "RTM"
                     }
 
+                    # Try to get the database names and size through PerfData
+                    # SQLCounter name is Win32_PerfFormattedData_MSSQL<InstanceName>_MSSQL<InstanceNAme>Databases (!)
+                    $SQLCounterName = "Win32_PerfFormattedData_${SQLInstanceNameInPerfCounter}_${SQLInstanceNameInPerfCounter}Databases"
+                    $databases = [System.Collections.ArrayList]@()
+                    $machine.$SQLCounterName | ForEach-Object {
+                        $databases.Add([PSCustomObject]@{
+                            DBName = $_.Name
+                            MDFSizeKB = $_.DataFilesSizeKB
+                            LDFSizeKB = $_.LogFilesSizeKB 
+                            LDFInUseKB = $_.LogFilesUsedSizeKB 
+                        }) | Out-Null
+                    }
+
                     $instances.Add([PSCustomObject]@{
                         SQLVersion = $SQLVersion
                         SQLEdition = $SQLEdition
                         SQLVersion_Desc = $SQLVersion_Desc
                         InstanceName = $InstanceName
+                        Databases = $databases
                     }) | Out-Null
 
                 }
