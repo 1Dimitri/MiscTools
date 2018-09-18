@@ -1,10 +1,14 @@
-function New-BusinessObject {
+function New-InventoryBusinessObject {
     [CmdletBinding()]
     param (
         # Parameter help description
-        [Parameter(Mandatory=$true,Position=0)]
+        [Parameter(Mandatory=$true,Position=0,ParameterSetName='directory')]
         [String]
-        $SourcePath
+        $SourcePath,
+        [Parameter(Mandatory=$true,Position=0,ParameterSetName='xmlarray')]
+        [Object[]]
+        $Objects
+        
         # [Parameter(Mandatory=$true,Position=1)]
         # [String]
         # $DestinationPath
@@ -12,7 +16,14 @@ function New-BusinessObject {
     )
     
     begin {
-        $xmlfiles = Get-ChildItem -Recurse -Filter '*.xml' -Path $SourcePath
+        if ($PSCmdlet.ParameterSetName -eq 'directory') {
+            $xmlfiles = Get-ChildItem -Recurse -Filter '*.xml' -Path $SourcePath
+            $myxml = foreach ($xmlfile in $xmlfiles) {
+                Import-CliXml $xmlfile
+            }
+    } else {
+        $myxml = $Objects
+    }
       #  Test-CreateNewDirectory -Path $DestinationPath
         $NotRespondingMachines = [System.Collections.ArrayList]@()
         $SyntaxErrorFiles = [System.Collections.ArrayList]@()
@@ -20,9 +31,9 @@ function New-BusinessObject {
     }
     
     process {
-        foreach ($xmlfile in $xmlfiles) {
+     #  foreach ($xmlfile in $xmlfiles) {
             Write-Verbose "Importing $($xmlfile.Fullname)"
-            $myxml = Import-Clixml $xmlfile.FullName
+            # $myxml = Import-Clixml $xmlfile.FullName
             foreach ($machine in [array]$myxml) {
                 $ComputerName = $Machine.ComputerName
                 if ([String]::IsNullOrEmpty($ComputerName)) {
@@ -102,7 +113,7 @@ function New-BusinessObject {
                     # Keep number and installation date
                     $isnuminKB = $hotfix.HotfixID -match '\d+'
                     if ($isnuminKB) {
-                        $hfname = $Matches[0].Value
+                        $hfname = $Matches[0]
                     } else {
                         $hfname = $hotfix.HotfixID
                     }
@@ -176,7 +187,7 @@ function New-BusinessObject {
                     # TO DO: Not valid for clustered code
                     $InstanceName = $InstanceID -replace '^MSSQL(\d)+\.',''
                     $SQLInstanceNameInPerfCounter = $InstanceID -replace '(^MSSQL)\d+\.(.+)','$1$2'
-                        Write-VErbose "***$SQLInstanceNameInPerfCounter***"
+                        #Write-VErbose "***$SQLInstanceNameInPerfCounter***"
                     if ($InstanceName -eq 'MSSQLSERVER') {
                         $InstanceName = $ComputerShortname
                     } else {
@@ -192,7 +203,7 @@ function New-BusinessObject {
                         8 { '2000'; break;  }
                         9 { '2005'; break;  }
                         10{ 
-                            if ([int] $SQLVersionParts[1] -gt 50 ) {
+                            if ([int] $SQLVersionParts[1] -ge 50 ) {
                                 '2008 R2'
                             } else {
                                 '2008'
@@ -282,7 +293,7 @@ function New-BusinessObject {
                     OperatingSystem_Desc = $OSFriendlyName       
                 }
             }
-        }
+        #}
     }
     
     end {
