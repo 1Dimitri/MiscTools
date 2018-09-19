@@ -1,4 +1,4 @@
-function New-InventoryBusinessObject {
+function COnvertTo-InventoryBusinessObject {
     [CmdletBinding()]
     param (
         # Parameter help description
@@ -19,7 +19,7 @@ function New-InventoryBusinessObject {
         if ($PSCmdlet.ParameterSetName -eq 'directory') {
             $xmlfiles = Get-ChildItem -Recurse -Filter '*.xml' -Path $SourcePath
             $myxml = foreach ($xmlfile in $xmlfiles) {
-                Import-CliXml $xmlfile
+                Import-CliXml $xmlfile.FullName
             }
     } else {
         $myxml = $Objects
@@ -37,7 +37,7 @@ function New-InventoryBusinessObject {
             foreach ($machine in [array]$myxml) {
                 $ComputerName = $Machine.ComputerName
                 if ([String]::IsNullOrEmpty($ComputerName)) {
-                    Write-Verbose "Found incorrect snippet"
+                    Write-Verbose "Found incorrect snippet in ($fileinfo.Fullname)"
                     $SyntaxErrorFiles.Add($fileinfo.Fullname) | Out-Null
                     continue
                 }
@@ -62,8 +62,29 @@ function New-InventoryBusinessObject {
                     }
                     continue
                 }
+                
+                $InvalidData = $machine._InvalidData
+                if ('Win32_ComputerSystem' -in $InvalidData) {
+                    [PSCustomObject]@{
+                        ComputerName = $Computername
+                        CollectedOn = if ($null -ne $machine.TimeStamp) {
+                            $machine.TimeStamp
+                        } else {
+                            Get-Date
+                        }
+                        Pingable = $false
+                        InternalVersion = if ($null -ne $ComputerName._BuildVersion) {
+                            $ComputerName._BuildVersion
+                        } else {
+                            '19700101.0'
+                        }
+                        BasicWMIDataAvailable = $false
+                    }
+                    continue
 
+                }
                 # Computer name
+
                 $ComputerShortname = $machine.Win32_ComputerSystem.DNSHostName
                 $Model = $machine.Win32_ComputerSystem.Model
                 $Manufacturer = $machine.Win32_ComputerSystem.Manufacturer
@@ -251,7 +272,7 @@ function New-InventoryBusinessObject {
 
 
                 # Return the full monty
-
+                if ($null -ne $ComputerShortname) {
                 [PSCustomObject]@{
                     ComputerName = $ComputerShortname     
                     
@@ -283,6 +304,7 @@ function New-InventoryBusinessObject {
                     CollectedOn = $DataFreshnessTimestamp
                     InternalVersion = $InternalVersion
                     Pingable = $true
+                    BasicWMIDataAvailable = $true
 
                     # Friendly properties / calculated properties
 
@@ -292,6 +314,7 @@ function New-InventoryBusinessObject {
                     isPartOfDomain = $isPartOfDomain
                     OperatingSystem_Desc = $OSFriendlyName       
                 }
+            }
             }
         #}
     }
