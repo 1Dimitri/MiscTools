@@ -285,7 +285,7 @@ function Get-InventoryData {
             $ReturnProperties = @{
                     TimeStamp = $StartTimeAll
                     _CompatibilityLevel = '1.0'
-                    _BuildVersion = '20180906.0'
+                    _BuildVersion = '20200221.0'
                     ComputerName = $MachineName
                     Pingable = $isPingable
                     LocalHost = $isLocal
@@ -327,7 +327,7 @@ function Get-InventoryData {
             $ReturnProperties.Add('isSQLServerInstalled',$isSQLServerInstalled)
             if ($isSQLServerInstalled) {
 
-                $sqlclasses = Get-SafeWMIResult -Class __NAMESPACE -Namespace $SQLServerNamespace
+                $sqlclasses = Get-SafeWMIResult -Class __NAMESPACE -Namespace $SQLServerNamespace @WMICommonParameters
                 $isSSRSInstalled = $sqlclasses | Where-Object { $_.Name -eq 'ReportServer'}
                 $dbEngineVersions = [array] $sqlclasses | Where-Object { $_.Name -like 'ComputerManagement*'}
                 foreach($dbVersion in $dbEngineVersions) {
@@ -338,7 +338,8 @@ function Get-InventoryData {
                 }
 
                 #$instanceNames = [System.Collections.ArrayList]@()
-                $perfClasses = (Get-SafeWMIResult -List -Class 'Win32_PerfFormattedData_*Databases' @WMICommonParameters).Name
+                $perfClasses = (Get-SafeWMIResult -List -Class 'Win32_PerfFormattedData_*Databases' @WMICommonParameters).Name 
+                $perfClasses = $perfClasses | Select-String -NotMatch 'XTPDatabases$'
                 $perfInstances = Get-SafeWMIFullClass -Classes $perfClasses @WMICommonParameters
                 # foreach ($perfInstance in $perfClasses) {
                 #     #$ReturnProperties.Add($perfInstance.__CLASS,$perfInstance)
